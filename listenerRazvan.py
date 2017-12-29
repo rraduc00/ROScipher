@@ -5,6 +5,8 @@ from geometry_msgs.msg import Twist
 from turtlesim.msg import Pose
 from math import pow, sqrt, atan2
 import numpy
+from Crypto.Cipher import AES
+from beginner_tutorials.msg import cipheredPose
 
 x= 0
 y= 0
@@ -12,9 +14,30 @@ theta = 0
 
 velocityPublisher = rospy.Publisher('/turtle1/cmd_vel', Twist, queue_size=10)
 
+def decryptMessage(pose):
+    e = AES.new('Esto es la clave. Razvan', AES.MODE_CBC, 'Vector inicializ')
+    pose.x = e.decrypt(pose.x)
+    pose.y = e.decrypt(pose.y)
+    pose.theta = e.decrypt(pose.theta)
+    pose.angular_velocity = e.decrypt(pose.angular_velocity)
+    pose.linear_velocity = e.decrypt(pose.linear_velocity)
+    return pose
+
+def parseFloat(pose):
+    pose.x = float(pose.x)
+    pose.y = float(pose.y)
+    pose.theta = float(pose.theta)
+    pose.angular_velocity = float(pose.angular_velocity)
+    pose.linear_velocity = float(pose.linear_velocity)
+    return pose
+
 def callback(data): 
-    rospy.loginfo('Mis coordenadas antes de recibir las nuevas son x= %.9f && y= %.9f' %(x, y))
-    rospy.loginfo(rospy.get_caller_id() + 'I heard coordinates x= %.9f && y= %.9f' %(data.x, data.y))
+    rospy.loginfo(rospy.get_caller_id() + 'I heard coordinates x= %s && y= %s' %(data.x, data.y))
+    
+    data = decryptMessage(data)
+    data = parseFloat(data)
+
+    rospy.loginfo(rospy.get_caller_id() + 'I heard coordinates x= %s && y= %s' %(data.x, data.y))
     vel_msg = Twist()
 
     #Primer publish a cmd_vel
@@ -72,7 +95,7 @@ def listener():
     rospy.init_node('coordinates_receiver_and_turtle_pusher', anonymous=True)
     
     rospy.Subscriber('turtle1/pose', Pose, obtainGlobalParams)
-    rospy.Subscriber('turtleAutoMove', Pose, callback)
+    rospy.Subscriber('turtleAutoMove', cipheredPose, callback)
 
     # spin() simply keeps python from exiting until this node is stopped
     rospy.spin()
